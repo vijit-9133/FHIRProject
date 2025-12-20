@@ -1,0 +1,16 @@
+# Frontend (Angular)
+node_modules/
+dist/
+.angular/
+
+# Backend (.NET)
+bin/
+obj/
+.vs/
+
+# Logs
+*.log
+
+# Environment files
+.env
+appsettings.Development.json
