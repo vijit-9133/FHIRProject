@@ -26,8 +26,19 @@ namespace FhirProject.Api.Controllers
         [HttpPost("convert")]
         public async Task<IActionResult> ConvertToFhir([FromBody] ConvertToFhirRequestDto request)
         {
+            Console.WriteLine($"Received request: {System.Text.Json.JsonSerializer.Serialize(request)}");
+            
             if (request == null)
+            {
+                Console.WriteLine("Request is null");
                 return BadRequest("Request cannot be null");
+            }
+
+            if (request.Data == null)
+            {
+                Console.WriteLine("Request.Data is null");
+                return BadRequest("Request data cannot be null");
+            }
 
             try
             {
@@ -40,6 +51,8 @@ namespace FhirProject.Api.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Exception: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 return StatusCode(500, new { message = "An unexpected error occurred", error = ex.Message });
             }
         }

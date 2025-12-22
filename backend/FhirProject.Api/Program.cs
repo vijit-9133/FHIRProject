@@ -8,6 +8,7 @@ using FhirProject.Api.Services.Implementations;
 using FhirProject.Api.Mapping;
 using FhirProject.Api.Validation;
 using FhirProject.Api.Middleware;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,7 +34,22 @@ builder.Services.AddScoped<IFhirValidator, FhirPatientValidator>();
 builder.Services.AddScoped<IFhirConversionService, FhirConversionService>();
 
 // Enable Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
+
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 // Enable Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
@@ -56,6 +72,9 @@ var app = builder.Build();
 // Add global exception handling middleware
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
+// Use CORS
+app.UseCors("AllowAll");
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -64,7 +83,6 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "FHIR Data Converter API v1");
     });
 }
-
 
 // Map Controllers
 app.MapControllers();

@@ -9,9 +9,9 @@ namespace FhirProject.Api.Models.custom
 
     public string Gender { get; set; }
 
-    public string PhoneNumber { get; set; }
-    public string Email { get; set; }
+    public string? PhoneNumber { get; set; }
+    public string? Email { get; set; }
 
-    public AddressInputModel Address { get; set; }
+    public AddressInputModel? Address { get; set; }
 }
 }
