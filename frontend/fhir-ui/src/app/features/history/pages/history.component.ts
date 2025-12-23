@@ -32,7 +32,14 @@ import { ConversionRequest } from '../../../core/api/api.models';
               </td>
               <td>{{request.createdAt | date}}</td>
               <td>
-                <a [routerLink]="['/details', request.id]" class="btn btn-sm btn-primary">View</a>
+                <a [routerLink]="['/details', request.id]" class="btn btn-sm btn-primary me-2">View</a>
+                <button 
+                  *ngIf="request.status === 0 || request.status === 2" 
+                  (click)="rerunConversion(request.id)" 
+                  class="btn btn-sm btn-warning"
+                  [disabled]="rerunningIds.has(request.id)">
+                  {{rerunningIds.has(request.id) ? 'Re-running...' : 'Re-run'}}
+                </button>
               </td>
             </tr>
           </tbody>
@@ -43,6 +50,7 @@ import { ConversionRequest } from '../../../core/api/api.models';
 })
 export class HistoryComponent implements OnInit {
   history: ConversionRequest[] = [];
+  rerunningIds = new Set<number>();
 
   constructor(
     private fhirApi: FhirApiService,
@@ -88,5 +96,30 @@ export class HistoryComponent implements OnInit {
       case 2: return 'badge-danger';
       default: return 'badge-secondary';
     }
+  }
+
+  rerunConversion(conversionRequestId: number) {
+    this.rerunningIds.add(conversionRequestId);
+    this.cdr.detectChanges();
+    
+    // Use the dedicated rerun endpoint that updates the existing record
+    this.fhirApi.rerunConversion(conversionRequestId).subscribe({
+      next: (result: any) => {
+        console.log('Re-run result:', result);
+        this.rerunningIds.delete(conversionRequestId);
+        if (result.success) {
+          this.loadHistory();
+        } else {
+          alert(result.message);
+        }
+        this.cdr.detectChanges();
+      },
+      error: (error: any) => {
+        console.error('Re-run failed:', error);
+        this.rerunningIds.delete(conversionRequestId);
+        alert('Re-run failed. Please try again.');
+        this.cdr.detectChanges();
+      }
+    });
   }
 }

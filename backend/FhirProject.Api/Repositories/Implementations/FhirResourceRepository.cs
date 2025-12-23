@@ -39,5 +39,15 @@ namespace FhirProject.Api.Repositories.Implementations
         {
             return await _context.FhirResources.ToListAsync();
         }
+
+        public async Task DeleteAsync(int id)
+        {
+            var entity = await _context.FhirResources.FindAsync(id);
+            if (entity != null)
+            {
+                _context.FhirResources.Remove(entity);
+                await _context.SaveChangesAsync();
+            }
+        }
     }
 }

@@ -1,83 +1,95 @@
 # FHIR Data Converter & Mapper
 
-A clean, extensible ASP.NET Core Web API that converts custom (non-FHIR) healthcare data into FHIR-compliant JSON resources, enabling interoperability between disparate healthcare systems.
+A clean, extensible **full-stack healthcare interoperability application** that converts custom (non-FHIR) healthcare data into **FHIR-compliant JSON resources**, enabling seamless data exchange between disparate healthcare systems.
 
-This project demonstrates real-world healthcare backend design, including FHIR standards, clean architecture, auditability, and structured validation, without unnecessary complexity.
+This project demonstrates **real-world healthcare system design**, covering **FHIR standards**, **clean architecture**, **auditability**, and **modern Angular frontend development**, without unnecessary over-engineering.
 
 ---
 
 ## Why This Project Exists
 
 Healthcare systems often:
-- Store patient data in custom, non-standard formats
-- Cannot easily exchange data with other systems
-- Struggle with interoperability and compliance
 
-FHIR (Fast Healthcare Interoperability Resources) is the industry standard for solving this problem.
+- Store patient data in **custom, non-standard formats**
+- Cannot easily exchange data across systems
+- Struggle with **interoperability and compliance**
 
-This project acts as a conversion bridge:
+**FHIR (Fast Healthcare Interoperability Resources)** is the industry standard designed to solve this problem.
 
-Custom Healthcare Data -> Valid FHIR JSON -> Persisted and Auditable
+This project acts as a **conversion bridge**:
+
+Custom Healthcare Data → Valid FHIR JSON → Persisted & Auditable Records
 
 ---
 
 ## Key Objectives
 
-- Convert non-FHIR data into real FHIR resources
-- Follow Clean Architecture principles
-- Ensure auditability and traceability
-- Design for extensibility (new FHIR resources)
-- Keep the system simple, readable, and production-ready
+- Convert non-FHIR data into **real FHIR resources**
+- Follow **Clean Architecture** principles
+- Ensure **auditability and traceability**
+- Design for **extensibility** (new FHIR resources)
+- Build a **full-stack, production-ready system**
+- Keep complexity intentional and readable
 
 ---
 
 ## Architecture Overview
 
-This project follows a modular monolith using Clean Architecture:
+This project follows a **modular monolith** using **Clean Architecture**:
 
-Controller -> Service -> Mapper / Validator -> Repository -> Database
+Frontend (Angular)
+↓
+Controller → Service → Mapper / Validator → Repository → Database
 
-Design principles:
+### Design Principles
+
 - Clear separation of concerns
 - Async-first design
 - Dependency inversion
-- No overengineering (no microservices, queues, or CQRS)
+- Thin controllers, rich services
+- No microservices, queues, or CQRS overkill
 
 ---
 
 ## Technology Stack
 
-Backend: ASP.NET Core Web API (.NET 9)  
-Database: SQL Server  
-ORM: Entity Framework Core 9  
-FHIR: HL7 FHIR .NET SDK (R4)  
-Serialization: System.Text.Json  
-API Documentation: Swagger / OpenAPI
+### Backend
+- **ASP.NET Core Web API (.NET 9)**
+- **Entity Framework Core 9**
+- **SQL Server**
+- **HL7 FHIR .NET SDK (R4)**
+- **System.Text.Json**
+- **Swagger / OpenAPI**
+
+### Frontend
+- **Angular 18+**
+- **Standalone Components (No NgModules)**
+- **RxJS & HttpClient**
+- **Reactive Forms**
+- **Bootstrap (UI styling)**
 
 ---
 
-## Core Features
+## Core Backend Features
 
 ### Real FHIR Resource Generation
-- Uses the HL7 FHIR .NET SDK
-- Produces valid FHIR R4 JSON
-- Avoids hand-crafted or FHIR-like models
+- Uses the **HL7 FHIR .NET SDK**
+- Produces **valid FHIR R4 JSON**
+- Avoids hand-crafted or “FHIR-like” models
 
 ### Resource-Specific Mappers
 - Each FHIR resource has its own mapper
-- Adding new resources requires no service changes
-- Example: PatientFhirMapper
+- Adding new resources requires **no service changes**
+- Example: `PatientFhirMapper`
 
 ### Lightweight FHIR Validation
-- Validates generated FHIR resources
-- Ensures required fields are present
+- Ensures required fields exist
 - Returns structured validation errors
 - Avoids heavy profile enforcement
 
 ### Explicit Audit Trail
-Each conversion request has a clear lifecycle:
+Each conversion request follows a clear lifecycle:
 
-Pending -> Success | Failed
 
 Stored metadata includes:
 - Conversion status
@@ -94,48 +106,135 @@ Stored metadata includes:
 
 ---
 
-## Project Structure
-Controllers
-Services
-Mapping
-IFhirResourceMapper
-PatientFhirMapper
-Validation
-IFhirValidator
-FhirPatientValidator
-Repositories
-Middleware
-GlobalExceptionMiddleware
-Entities
-DTOs
-Enums
-Data
+## Frontend Application Overview
+
+The frontend is a **modern Angular 18+ application** built using **standalone components** and **feature-based architecture**.
+
+It provides a complete UI for:
+- Submitting healthcare data for conversion
+- Viewing conversion history
+- Inspecting detailed FHIR output
+- Auditing conversion requests
+
+### Frontend Folder Structure
+
+frontend/fhir-ui/src/app/
+├── core/
+│ ├── api/
+│ │ ├── fhir-api.service.ts
+│ │ └── api.models.ts
+│ └── interceptors/
+│ └── error.interceptor.ts
+├── shared/
+│ └── pipes/
+│ └── pretty-json.pipe.ts
+├── features/
+│ ├── conversion/
+│ ├── history/
+│ └── details/
+├── app.ts
+├── app.config.ts
+└── app.routes.ts
 
 ---
 
-## Conversion Flow
+## Frontend Architecture Highlights
 
-1. Client submits custom healthcare data
-2. Conversion request is created with status Pending
+### Modern Angular Design
+- **Standalone Components** (no NgModules)
+- **Lazy-loaded feature routes**
+- **Dependency Injection at root**
+- **Reactive Forms with validation**
+- **Strongly typed API contracts**
+
+---
+
+## Core Frontend Infrastructure
+
+### FhirApiService
+Centralized service for backend communication.
+
+Features:
+- HTTP client abstraction
+- RxJS observable pattern
+- Strong typing
+- Integrated error handling
+
+Supported APIs:
+- Convert to FHIR
+- Fetch conversion history
+- Fetch conversion request
+- Fetch generated FHIR resource
+
+---
+
+### Global Error Interceptor
+- Catches all HTTP errors
+- Logs errors for debugging
+- Displays user-friendly messages
+- Ensures consistent error handling
+
+---
+
+### Pretty JSON Pipe
+- Formats JSON output
+- Improves readability for FHIR inspection
+- Used across details and conversion views
+
+---
+
+## Frontend Feature Modules
+
+### Conversion Feature
+- Reactive form for patient data
+- Validation for required fields
+- ISO date formatting for backend compatibility
+- Displays generated FHIR JSON with tracking ID
+
+### History Feature
+- Lists all conversion requests
+- Color-coded status badges:
+  - 🟢 Success
+  - 🟡 Pending
+  - 🔴 Failed
+- Responsive table design
+- Navigation to detailed view
+
+### Details Feature
+- Displays full conversion context
+- Raw input JSON
+- Generated FHIR JSON
+- Visual status indicators
+- Responsive, card-based layout
+- Back navigation for usability
+
+---
+
+## Conversion Flow (End-to-End)
+
+1. User submits custom healthcare data
+2. Conversion request created with **Pending** status
 3. Resource-specific mapper generates FHIR JSON
 4. FHIR resource is validated
-5. FHIR JSON is persisted
-6. Conversion request updated to Success or Failed
-7. Structured response returned to the client
+5. Output persisted in database
+6. Request marked **Success** or **Failed**
+7. Structured response returned to UI
+8. Conversion available in history & details view
 
 ---
 
 ## API Endpoints
 
-POST /api/fhir/convert  
-GET  /api/fhir/{conversionRequestId}  
-GET  /api/fhir/request/{id}  
-GET  /api/fhir/history  
+POST /api/fhir/convert
+GET /api/fhir/{conversionRequestId}
+GET /api/fhir/request/{id}
+GET /api/fhir/history
 
 ---
 
 ## Sample Request
 
+```json
 {
   "resourceType": 1,
   "data": {
@@ -154,7 +253,6 @@ GET  /api/fhir/history
     }
   }
 }
-# Sample Response
 {
   "resourceType": "Patient",
   "name": [
@@ -167,5 +265,3 @@ GET  /api/fhir/history
   "gender": "male",
   "birthDate": "1990-05-14"
 }
-
-

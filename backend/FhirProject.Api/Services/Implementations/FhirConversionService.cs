@@ -1,5 +1,6 @@
 using FhirProject.Api.DTOs;
 using FhirProject.Api.Mapping;
+using FhirProject.Api.Models.custom;
 using FhirProject.Api.Models.entities;
 using FhirProject.Api.Models.enums;
 using FhirProject.Api.Repositories.Interfaces;
@@ -15,6 +16,7 @@ namespace FhirProject.Api.Services.Implementations
         private readonly IFhirResourceRepository _fhirResourceRepository;
         private readonly IEnumerable<IFhirResourceMapper> _mappers;
         private readonly IEnumerable<IFhirValidator> _validators;
+        private static readonly JsonSerializerOptions PersistenceOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
         public FhirConversionService(
             IConversionRequestRepository conversionRequestRepository,
@@ -30,7 +32,7 @@ namespace FhirProject.Api.Services.Implementations
 
         public async Task<ConvertToFhirResponseDto> ConvertToFhirAsync(ConvertToFhirRequestDto request)
         {
-            if (request?.Data == null)
+            if (request == null)
             {
                 return new ConvertToFhirResponseDto
                 {
@@ -51,7 +53,7 @@ namespace FhirProject.Api.Services.Implementations
             }
 
             // Save conversion request with Pending status
-            var inputJson = JsonSerializer.Serialize(request.Data);
+            var inputJson = JsonSerializer.Serialize(request.Data, PersistenceOptions);
             var conversionRequest = new ConversionRequestEntity
             {
                 ResourceType = request.ResourceType.ToString(),
@@ -144,19 +146,170 @@ namespace FhirProject.Api.Services.Implementations
             return await _conversionRequestRepository.GetAllAsync();
         }
 
+        public async Task<ConvertToFhirResponseDto> RerunExistingConversionAsync(int conversionRequestId)
+        {
+            var existingRequest = await _conversionRequestRepository.GetByIdAsync(conversionRequestId);
+            if (existingRequest == null)
+            {
+                return new ConvertToFhirResponseDto
+                {
+                    Success = false,
+                    Message = "Conversion request not found"
+                };
+            }
+
+            var resourceType = Enum.Parse<FhirResourceType>(existingRequest.ResourceType);
+            var inputDataJson = existingRequest.InputDataJson;
+
+            // Validate stored JSON data
+            if (string.IsNullOrWhiteSpace(inputDataJson))
+            {
+                return new ConvertToFhirResponseDto
+                {
+                    Id = existingRequest.Id,
+                    Success = false,
+                    Message = "Re-run failed: No input data found in stored record"
+                };
+            }
+
+            try
+            {
+                // Deserialize to the correct input model type based on resource type
+                object inputData;
+                
+                switch (resourceType)
+                {
+                    case FhirResourceType.Patient:
+                        inputData = JsonSerializer.Deserialize<CustomPatientInputModel>(inputDataJson, PersistenceOptions);
+                        break;
+                    case FhirResourceType.Practitioner:
+                        inputData = JsonSerializer.Deserialize<CustomPractitionerInputModel>(inputDataJson, PersistenceOptions);
+                        break;
+                    case FhirResourceType.Organization:
+                        inputData = JsonSerializer.Deserialize<CustomOrganizationInputModel>(inputDataJson, PersistenceOptions);
+                        break;
+                    default:
+                        throw new UnsupportedResourceTypeException(resourceType);
+                }
+
+                // Reset status to Pending only after successful JSON parsing
+                existingRequest.Status = ConversionStatus.Pending;
+                existingRequest.ErrorMessage = null;
+                await _conversionRequestRepository.UpdateAsync(existingRequest);
+
+                var mapper = GetMapper(resourceType);
+                var fhirJson = mapper.MapToFhirJson(inputData);
+
+                // Skip validation for rerun since data was already validated originally
+                var fhirResource = JsonSerializer.Deserialize<object>(fhirJson);
+
+                // Delete existing FHIR resource if any
+                var existingFhirResource = await _fhirResourceRepository.GetByConversionRequestIdAsync(conversionRequestId);
+                if (existingFhirResource != null)
+                {
+                    await _fhirResourceRepository.DeleteAsync(existingFhirResource.Id);
+                }
+
+                // Save new FHIR resource
+                var fhirEntity = new FhirResourceEntity
+                {
+                    ConversionRequestId = existingRequest.Id,
+                    FhirJson = fhirJson,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _fhirResourceRepository.SaveAsync(fhirEntity);
+
+                // Update status to Success
+                existingRequest.Status = ConversionStatus.Success;
+                existingRequest.ErrorMessage = null;
+                await _conversionRequestRepository.UpdateAsync(existingRequest);
+
+                return new ConvertToFhirResponseDto
+                {
+                    Id = existingRequest.Id,
+                    Success = true,
+                    Message = "Re-run completed successfully",
+                    FhirResource = fhirResource
+                };
+            }
+            catch (JsonException)
+            {
+                return new ConvertToFhirResponseDto
+                {
+                    Id = existingRequest.Id,
+                    Success = false,
+                    Message = "This conversion was created before replay support was added and cannot be re-run."
+                };
+            }
+            catch (Exception ex)
+            {
+                existingRequest.Status = ConversionStatus.Failed;
+                existingRequest.ErrorMessage = ex.Message;
+                await _conversionRequestRepository.UpdateAsync(existingRequest);
+
+                return new ConvertToFhirResponseDto
+                {
+                    Id = existingRequest.Id,
+                    Success = false,
+                    Message = $"Re-run failed: {ex.Message}"
+                };
+            }
+        }
+
         private (bool IsValid, string ErrorMessage) ValidateInput(ConvertToFhirRequestDto request)
         {
-            var patient = request.Data;
-            if (string.IsNullOrWhiteSpace(patient.FirstName))
-                return (false, "First name is required");
+            try
+            {
+                var dataJson = request.Data.ToString();
+                if (string.IsNullOrWhiteSpace(dataJson) || dataJson == "{}")
+                    return (false, "Request data cannot be empty");
 
-            if (string.IsNullOrWhiteSpace(patient.LastName))
-                return (false, "Last name is required");
+                if (request.ResourceType == FhirResourceType.Patient)
+                {
+                    var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                    var patient = JsonSerializer.Deserialize<CustomPatientInputModel>(dataJson, options);
+                    if (string.IsNullOrWhiteSpace(patient?.FirstName))
+                        return (false, "First name is required");
 
-            if (patient.DateOfBirth == default)
-                return (false, "Date of birth is required");
+                    if (string.IsNullOrWhiteSpace(patient?.LastName))
+                        return (false, "Last name is required");
 
-            return (true, string.Empty);
+                    if (patient?.DateOfBirth == DateTime.MinValue)
+                        return (false, "Date of birth is required");
+                }
+                else if (request.ResourceType == FhirResourceType.Practitioner)
+                {
+                    var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                    var practitioner = JsonSerializer.Deserialize<CustomPractitionerInputModel>(dataJson, options);
+                    
+                    if (string.IsNullOrWhiteSpace(practitioner?.FirstName))
+                        return (false, "First name is required");
+
+                    if (string.IsNullOrWhiteSpace(practitioner?.LastName))
+                        return (false, "Last name is required");
+
+                    if (string.IsNullOrWhiteSpace(practitioner?.LicenseNumber))
+                        return (false, "License number is required");
+                }
+                else if (request.ResourceType == FhirResourceType.Organization)
+                {
+                    var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+                    var organization = JsonSerializer.Deserialize<CustomOrganizationInputModel>(dataJson, options);
+                    
+                    if (string.IsNullOrWhiteSpace(organization?.Name))
+                        return (false, "Organization name is required");
+
+                    if (string.IsNullOrWhiteSpace(organization?.RegistrationNumber))
+                        return (false, "Registration number is required");
+                }
+
+                return (true, string.Empty);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Invalid data format: {ex.Message}");
+            }
         }
 
         private IFhirResourceMapper GetMapper(FhirResourceType resourceType)

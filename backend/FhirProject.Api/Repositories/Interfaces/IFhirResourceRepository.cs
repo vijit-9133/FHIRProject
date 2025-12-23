@@ -8,5 +8,6 @@ namespace FhirProject.Api.Repositories.Interfaces
         Task<FhirResourceEntity?> GetByConversionRequestIdAsync(int conversionRequestId);
         Task<FhirResourceEntity?> GetByIdAsync(int id);
         Task<IEnumerable<FhirResourceEntity>> GetAllAsync();
+        Task DeleteAsync(int id);
     }
 }

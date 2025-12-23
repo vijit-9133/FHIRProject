@@ -34,15 +34,10 @@ namespace FhirProject.Api.Controllers
                 return BadRequest("Request cannot be null");
             }
 
-            if (request.Data == null)
-            {
-                Console.WriteLine("Request.Data is null");
-                return BadRequest("Request data cannot be null");
-            }
-
             try
             {
                 var result = await _fhirConversionService.ConvertToFhirAsync(request);
+                Console.WriteLine($"Service result: Success={result.Success}, Message={result.Message}");
                 
                 if (result.Success)
                     return Ok(result);
@@ -114,6 +109,27 @@ namespace FhirProject.Api.Controllers
             {
                 var history = await _fhirConversionService.GetConversionHistoryAsync();
                 return Ok(history);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An unexpected error occurred", error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Re-runs an existing conversion request
+        /// </summary>
+        /// <param name="conversionRequestId">The conversion request ID to re-run</param>
+        /// <returns>FHIR conversion result</returns>
+        [HttpPost("rerun/{conversionRequestId}")]
+        public async Task<IActionResult> RerunConversion(int conversionRequestId)
+        {
+            try
+            {
+                var result = await _fhirConversionService.RerunExistingConversionAsync(conversionRequestId);
+                
+                // Always return 200 OK for re-run attempts, let frontend handle success/failure
+                return Ok(result);
             }
             catch (Exception ex)
             {

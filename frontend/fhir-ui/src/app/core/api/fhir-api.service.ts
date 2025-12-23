@@ -25,4 +25,8 @@ export class FhirApiService {
   getFhirResource(conversionRequestId: number): Observable<any> {
     return this.http.get(`${this.baseUrl}/${conversionRequestId}`);
   }
+
+  rerunConversion(conversionRequestId: number): Observable<any> {
+    return this.http.post(`${this.baseUrl}/rerun/${conversionRequestId}`, {});
+  }
 }

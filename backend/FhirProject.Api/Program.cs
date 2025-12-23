@@ -26,9 +26,13 @@ builder.Services.AddScoped<IFhirResourceRepository, FhirResourceRepository>();
 
 // Register FHIR Mappers
 builder.Services.AddScoped<IFhirResourceMapper, PatientFhirMapper>();
+builder.Services.AddScoped<IFhirResourceMapper, PractitionerFhirMapper>();
+builder.Services.AddScoped<IFhirResourceMapper, OrganizationFhirMapper>();
 
 // Register FHIR Validators
 builder.Services.AddScoped<IFhirValidator, FhirPatientValidator>();
+builder.Services.AddScoped<IFhirValidator, FhirPractitionerValidator>();
+builder.Services.AddScoped<IFhirValidator, FhirOrganizationValidator>();
 
 // Register Services
 builder.Services.AddScoped<IFhirConversionService, FhirConversionService>();
