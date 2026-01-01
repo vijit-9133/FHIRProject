@@ -26,6 +26,15 @@ namespace FhirProject.Api.Data
             .Property(x => x.Status)
             .HasConversion<int>();
 
+        modelBuilder.Entity<ConversionRequestEntity>()
+            .Property(x => x.InputSourceType)
+            .HasConversion<int>()
+            .HasDefaultValue(InputSourceType.Form);
+
+        modelBuilder.Entity<ConversionRequestEntity>()
+            .Property(x => x.ExtractionConfidence)
+            .HasPrecision(3, 2);
+
         modelBuilder.Entity<FhirResourceEntity>()
             .HasKey(x => x.Id);
 

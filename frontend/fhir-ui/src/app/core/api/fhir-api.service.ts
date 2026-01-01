@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { DocumentIngestionResponse, FhirResourceType, ConvertToFhirRequest, ConvertToFhirResponse } from './api.models';
 
 @Injectable({
   providedIn: 'root'
@@ -10,8 +11,8 @@ export class FhirApiService {
 
   constructor(private http: HttpClient) {}
 
-  convertToFhir(data: any): Observable<any> {
-    return this.http.post(`${this.baseUrl}/convert`, data);
+  convertToFhir(request: ConvertToFhirRequest): Observable<ConvertToFhirResponse> {
+    return this.http.post<ConvertToFhirResponse>(`${this.baseUrl}/convert`, request);
   }
 
   getConversionHistory(): Observable<any[]> {
@@ -28,5 +29,12 @@ export class FhirApiService {
 
   rerunConversion(conversionRequestId: number): Observable<any> {
     return this.http.post(`${this.baseUrl}/rerun/${conversionRequestId}`, {});
+  }
+
+  ingestDocument(file: File, resourceType: FhirResourceType): Observable<DocumentIngestionResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('resourceType', resourceType.toString());
+    return this.http.post<DocumentIngestionResponse>('http://localhost:5078/api/DocumentIngestion/document', formData);
   }
 }

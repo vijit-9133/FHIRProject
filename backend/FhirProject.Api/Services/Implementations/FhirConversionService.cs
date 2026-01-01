@@ -41,14 +41,15 @@ namespace FhirProject.Api.Services.Implementations
                 };
             }
 
-            // Validate input
-            var validationResult = ValidateInput(request);
-            if (!validationResult.IsValid)
+            // Validate and deserialize input
+            var validationResult = ValidateAndDeserializeInput(request.ResourceType, request.Data);
+            var (isValid, errorMessage, deserializedModel) = ((bool, string, object?))validationResult;
+            if (!isValid)
             {
                 return new ConvertToFhirResponseDto
                 {
                     Success = false,
-                    Message = validationResult.ErrorMessage
+                    Message = errorMessage
                 };
             }
 
@@ -67,9 +68,9 @@ namespace FhirProject.Api.Services.Implementations
 
             try
             {
-                // Get mapper and convert to FHIR
+                // Get mapper and convert to FHIR using deserialized model
                 var mapper = GetMapper(request.ResourceType);
-                var fhirJson = mapper.MapToFhirJson(request.Data);
+                var fhirJson = mapper.MapToFhirJson(deserializedModel);
 
                 // Validate FHIR
                 var validator = GetValidator(request.ResourceType);
@@ -257,58 +258,62 @@ namespace FhirProject.Api.Services.Implementations
             }
         }
 
-        private (bool IsValid, string ErrorMessage) ValidateInput(ConvertToFhirRequestDto request)
+        private (bool IsValid, string ErrorMessage, object? DeserializedModel) ValidateAndDeserializeInput(FhirResourceType resourceType, dynamic data)
         {
             try
             {
-                var dataJson = request.Data.ToString();
+                // Serialize the dynamic data to JSON first
+                var dataJson = JsonSerializer.Serialize(data, PersistenceOptions);
                 if (string.IsNullOrWhiteSpace(dataJson) || dataJson == "{}")
-                    return (false, "Request data cannot be empty");
+                    return (false, "Request data cannot be empty", null);
 
-                if (request.ResourceType == FhirResourceType.Patient)
+                if (resourceType == FhirResourceType.Patient)
                 {
-                    var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-                    var patient = JsonSerializer.Deserialize<CustomPatientInputModel>(dataJson, options);
+                    var patient = JsonSerializer.Deserialize<CustomPatientInputModel>(dataJson, PersistenceOptions);
                     if (string.IsNullOrWhiteSpace(patient?.FirstName))
-                        return (false, "First name is required");
+                        return (false, "First name is required", null);
 
                     if (string.IsNullOrWhiteSpace(patient?.LastName))
-                        return (false, "Last name is required");
+                        return (false, "Last name is required", null);
 
                     if (patient?.DateOfBirth == DateTime.MinValue)
-                        return (false, "Date of birth is required");
+                        return (false, "Date of birth is required", null);
+
+                    return (true, string.Empty, patient);
                 }
-                else if (request.ResourceType == FhirResourceType.Practitioner)
+                else if (resourceType == FhirResourceType.Practitioner)
                 {
-                    var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-                    var practitioner = JsonSerializer.Deserialize<CustomPractitionerInputModel>(dataJson, options);
+                    var practitioner = JsonSerializer.Deserialize<CustomPractitionerInputModel>(dataJson, PersistenceOptions);
                     
                     if (string.IsNullOrWhiteSpace(practitioner?.FirstName))
-                        return (false, "First name is required");
+                        return (false, "First name is required", null);
 
                     if (string.IsNullOrWhiteSpace(practitioner?.LastName))
-                        return (false, "Last name is required");
+                        return (false, "Last name is required", null);
 
                     if (string.IsNullOrWhiteSpace(practitioner?.LicenseNumber))
-                        return (false, "License number is required");
+                        return (false, "License number is required", null);
+
+                    return (true, string.Empty, practitioner);
                 }
-                else if (request.ResourceType == FhirResourceType.Organization)
+                else if (resourceType == FhirResourceType.Organization)
                 {
-                    var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-                    var organization = JsonSerializer.Deserialize<CustomOrganizationInputModel>(dataJson, options);
+                    var organization = JsonSerializer.Deserialize<CustomOrganizationInputModel>(dataJson, PersistenceOptions);
                     
                     if (string.IsNullOrWhiteSpace(organization?.Name))
-                        return (false, "Organization name is required");
+                        return (false, "Organization name is required", null);
 
                     if (string.IsNullOrWhiteSpace(organization?.RegistrationNumber))
-                        return (false, "Registration number is required");
+                        return (false, "Registration number is required", null);
+
+                    return (true, string.Empty, organization);
                 }
 
-                return (true, string.Empty);
+                return (false, "Unsupported resource type", null);
             }
             catch (Exception ex)
             {
-                return (false, $"Invalid data format: {ex.Message}");
+                return (false, $"Invalid data format: {ex.Message}", null);
             }
         }
 

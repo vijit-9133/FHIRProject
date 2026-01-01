@@ -12,8 +12,8 @@ namespace FhirProject.Api.Mapping
 
         public string MapToFhirJson(object input)
         {
-            var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            var organizationInput = JsonSerializer.Deserialize<CustomOrganizationInputModel>(input.ToString(), options);
+            var organizationInput = input as CustomOrganizationInputModel 
+                ?? throw new ArgumentException("Expected CustomOrganizationInputModel", nameof(input));
             var fhirOrganization = MapToFhirOrganization(organizationInput);
             var serializer = new FhirJsonSerializer();
             return serializer.SerializeToString(fhirOrganization);

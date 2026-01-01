@@ -5,6 +5,8 @@ using FhirProject.Api.Repositories.Interfaces;
 using FhirProject.Api.Repositories.Implementations;
 using FhirProject.Api.Services.Interfaces;
 using FhirProject.Api.Services.Implementations;
+using FhirProject.Api.Services.Ocr;
+using FhirProject.Api.Services.Llm;
 using FhirProject.Api.Mapping;
 using FhirProject.Api.Validation;
 using FhirProject.Api.Middleware;
@@ -36,6 +38,12 @@ builder.Services.AddScoped<IFhirValidator, FhirOrganizationValidator>();
 
 // Register Services
 builder.Services.AddScoped<IFhirConversionService, FhirConversionService>();
+
+// Register OCR Service
+builder.Services.AddScoped<IOcrService, SimpleOcrService>();
+
+// Register Gemini LLM Service
+builder.Services.AddScoped<IGeminiExtractionService, GeminiExtractionService>();
 
 // Enable Controllers
 builder.Services.AddControllers()

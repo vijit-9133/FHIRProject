@@ -22,6 +22,7 @@ import { AuthApiService } from '../auth/auth-api.service';
             <div class="card-body">
               <h6>Allowed Actions:</h6>
               <ul class="list-unstyled">
+                <li>✓ Upload documents for AI-assisted data extraction</li>
                 <li>✓ Convert personal health data to FHIR Patient resources</li>
                 <li>✓ View own conversion history</li>
                 <li>✓ Access personal FHIR records</li>
@@ -30,8 +31,8 @@ import { AuthApiService } from '../auth/auth-api.service';
               </ul>
               
               <div class="mt-3">
-                <a routerLink="/convert" class="btn btn-primary me-2">Convert Data</a>
-                <a routerLink="/history" class="btn btn-outline-primary">View History</a>
+                <a routerLink="/conversion" class="btn btn-success me-2">🔄 Create FHIR Resource</a>
+                <a routerLink="/history" class="btn btn-outline-primary">📋 View History</a>
               </div>
             </div>
           </div>

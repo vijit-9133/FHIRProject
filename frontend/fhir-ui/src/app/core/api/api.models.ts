@@ -68,3 +68,19 @@ export enum FhirResourceType {
   Practitioner = 2,
   Organization = 3
 }
+
+// Gemini Document Ingestion Models
+export interface GeminiExtractionResult {
+  extractedData: PatientData | PractitionerData | OrganizationData | null;
+  fieldConfidences: Record<string, number>;
+  overallConfidence: number;
+  extractionWarnings: string[];
+  resourceType: FhirResourceType;
+}
+
+export interface DocumentIngestionResponse {
+  message: string;
+  resourceType: FhirResourceType;
+  extractedText: string;
+  geminiExtraction: GeminiExtractionResult | null;
+}

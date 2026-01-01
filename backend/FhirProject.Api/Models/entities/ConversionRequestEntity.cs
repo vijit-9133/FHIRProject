@@ -18,5 +18,11 @@ namespace FhirProject.Api.Models.entities
     public string? ErrorMessage { get; set; }
 
     public string MappingVersion { get; set; } = "v1";
+
+    public InputSourceType InputSourceType { get; set; } = InputSourceType.Form;
+
+    public decimal? ExtractionConfidence { get; set; }
+
+    public string? ExtractionWarnings { get; set; }
 }
 }

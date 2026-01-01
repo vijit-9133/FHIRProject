@@ -11,7 +11,8 @@ namespace FhirProject.Api.Mapping
 
         public string MapToFhirJson(object input)
         {
-            var patientInput = (CustomPatientInputModel)input;
+            var patientInput = input as CustomPatientInputModel 
+                ?? throw new ArgumentException("Expected CustomPatientInputModel", nameof(input));
             var fhirPatient = MapToFhirPatient(patientInput);
             var serializer = new FhirJsonSerializer();
             return serializer.SerializeToString(fhirPatient);

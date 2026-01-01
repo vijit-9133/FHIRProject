@@ -12,8 +12,8 @@ namespace FhirProject.Api.Mapping
 
         public string MapToFhirJson(object input)
         {
-            var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
-            var practitionerInput = JsonSerializer.Deserialize<CustomPractitionerInputModel>(input.ToString(), options);
+            var practitionerInput = input as CustomPractitionerInputModel 
+                ?? throw new ArgumentException("Expected CustomPractitionerInputModel", nameof(input));
             var fhirPractitioner = MapToFhirPractitioner(practitionerInput);
             var serializer = new FhirJsonSerializer();
             return serializer.SerializeToString(fhirPractitioner);

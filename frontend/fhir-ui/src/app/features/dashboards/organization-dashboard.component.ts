@@ -108,8 +108,8 @@ import { FhirResourceType, OrganizationData } from '../../core/api/api.models';
                 <h6 class="mb-0">Quick Actions</h6>
               </div>
               <div class="card-body">
-                <a routerLink="/convert" class="btn btn-outline-primary me-2">Convert Patient Data</a>
-                <a routerLink="/history" class="btn btn-outline-secondary">View History</a>
+                <a routerLink="/conversion" class="btn btn-success me-2">🔄 Create FHIR Resource</a>
+                <a routerLink="/history" class="btn btn-outline-secondary">📋 View History</a>
               </div>
             </div>
           </div>
