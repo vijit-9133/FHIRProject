@@ -20,6 +20,8 @@ public class GeminiExtractionService : IGeminiExtractionService
         try
         {
             _logger.LogInformation("Starting Gemini extraction for resource type: {ResourceType}", resourceType);
+            _logger.LogInformation("OCR input text length: {Length} characters", ocrText.Length);
+            _logger.LogInformation("OCR input text: {OcrText}", ocrText);
 
             using var cts = new CancellationTokenSource(_timeout);
             
@@ -29,11 +31,12 @@ public class GeminiExtractionService : IGeminiExtractionService
             // Simulate Gemini API call with realistic processing time
             await Task.Delay(1000, cts.Token);
             
-            var extractedData = SimulateGeminiExtraction(ocrText, resourceType);
+            var extractedData = ExtractFromOcrText(ocrText, resourceType);
             var fieldConfidences = GenerateFieldConfidences(extractedData, resourceType);
             var overallConfidence = CalculateOverallConfidence(fieldConfidences);
             var warnings = GenerateExtractionWarnings(extractedData, ocrText);
 
+            _logger.LogInformation("Extracted data: {ExtractedData}", JsonSerializer.Serialize(extractedData));
             _logger.LogInformation("Gemini extraction completed. Overall confidence: {Confidence}", overallConfidence);
 
             return new GeminiExtractionResultDto
@@ -84,73 +87,135 @@ Text to extract from:
 {ocrText}";
     }
 
-    private object SimulateGeminiExtraction(string ocrText, FhirResourceType resourceType)
+    private object ExtractFromOcrText(string ocrText, FhirResourceType resourceType)
     {
-        // Simulate realistic Gemini extraction based on OCR text content
+        // Extract data strictly from OCR text - no hardcoded fallbacks
         return resourceType switch
         {
-            FhirResourceType.Patient => ExtractPatientData(ocrText),
-            FhirResourceType.Practitioner => ExtractPractitionerData(ocrText),
-            FhirResourceType.Organization => ExtractOrganizationData(ocrText),
+            FhirResourceType.Patient => ExtractPatientDataFromText(ocrText),
+            FhirResourceType.Practitioner => ExtractPractitionerDataFromText(ocrText),
+            FhirResourceType.Organization => ExtractOrganizationDataFromText(ocrText),
             _ => throw new NotSupportedException($"Resource type {resourceType} not supported")
         };
     }
 
-    private CustomPatientInputModel ExtractPatientData(string ocrText)
+    private CustomPatientInputModel ExtractPatientDataFromText(string ocrText)
     {
+        // Extract data strictly from OCR text - return null if not found
         return new CustomPatientInputModel
         {
-            FirstName = ExtractField(ocrText, "John", "Name:"),
-            LastName = ExtractField(ocrText, "Doe", "Name:"),
-            DateOfBirth = DateTime.TryParse(ExtractField(ocrText, "1990-05-14", "Date of Birth:", "DOB:"), out var dob) ? dob : DateTime.Now.AddYears(-30),
-            Gender = ExtractField(ocrText, "male", "Gender:"),
-            PhoneNumber = ExtractField(ocrText, "+1-555-123-4567", "Phone:"),
-            Email = ExtractField(ocrText, "john.doe@example.com", "Email:"),
-            Address = new AddressInputModel
-            {
-                Line1 = ExtractField(ocrText, "123 Main Street", "Address:", "Street:"),
-                City = ExtractField(ocrText, "San Francisco", "City:"),
-                State = ExtractField(ocrText, "CA", "State:"),
-                PostalCode = ExtractField(ocrText, "94105", "Postal:", "ZIP:"),
-                Country = ExtractField(ocrText, "USA", "Country:")
-            }
+            FirstName = ExtractFieldFromText(ocrText, "Name:", "First Name:", "Patient:"),
+            LastName = ExtractFieldFromText(ocrText, "Name:", "Last Name:", "Patient:"),
+            DateOfBirth = ParseDateFromText(ocrText) ?? DateTime.MinValue,
+            Gender = ExtractFieldFromText(ocrText, "Gender:", "Sex:"),
+            PhoneNumber = ExtractFieldFromText(ocrText, "Phone:", "Tel:", "Telephone:"),
+            Email = ExtractFieldFromText(ocrText, "Email:", "E-mail:"),
+            Address = ExtractAddressFromText(ocrText)
         };
     }
 
-    private CustomPractitionerInputModel ExtractPractitionerData(string ocrText)
+    private CustomPractitionerInputModel ExtractPractitionerDataFromText(string ocrText)
     {
+        // Extract data strictly from OCR text - return null if not found
         return new CustomPractitionerInputModel
         {
-            FirstName = ExtractField(ocrText, "Jane", "Dr.", "Doctor"),
-            LastName = ExtractField(ocrText, "Smith", "Dr.", "Doctor"),
-            Gender = ExtractField(ocrText, "female", "Gender:"),
-            Qualification = ExtractField(ocrText, "Doctor of Medicine", "MD", "Qualification:"),
-            Speciality = ExtractField(ocrText, "Internal Medicine", "Specialization:", "Specialty:"),
-            LicenseNumber = ExtractField(ocrText, "MD987654321", "License:", "License Number:")
+            FirstName = ExtractFieldFromText(ocrText, "Dr.", "Doctor", "Practitioner:"),
+            LastName = ExtractFieldFromText(ocrText, "Dr.", "Doctor", "Practitioner:"),
+            Gender = ExtractFieldFromText(ocrText, "Gender:", "Sex:"),
+            Qualification = ExtractFieldFromText(ocrText, "MD", "Qualification:", "Degree:"),
+            Speciality = ExtractFieldFromText(ocrText, "Specialization:", "Specialty:", "Department:"),
+            LicenseNumber = ExtractFieldFromText(ocrText, "License:", "License Number:", "Registration:")
         };
     }
 
-    private CustomOrganizationInputModel ExtractOrganizationData(string ocrText)
+    private CustomOrganizationInputModel ExtractOrganizationDataFromText(string ocrText)
     {
+        // Extract data strictly from OCR text - return null if not found
         return new CustomOrganizationInputModel
         {
-            Name = ExtractField(ocrText, "General Hospital", "Hospital", "Clinic"),
-            Type = ExtractField(ocrText, "Hospital", "Type:"),
-            RegistrationNumber = ExtractField(ocrText, "ORG123456789", "Registration:", "Reg:")
+            Name = ExtractFieldFromText(ocrText, "Hospital", "Clinic", "Organization:", "Company:"),
+            Type = ExtractFieldFromText(ocrText, "Type:", "Category:"),
+            RegistrationNumber = ExtractFieldFromText(ocrText, "Registration:", "Reg:", "ID:")
         };
     }
 
-    private string? ExtractField(string text, string defaultValue, params string[] keywords)
+    private string? ExtractFieldFromText(string text, params string[] keywords)
     {
-        // Simple extraction logic - in real implementation, this would use Gemini
+        // Extract actual field value from OCR text based on keywords
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+
         foreach (var keyword in keywords)
         {
-            if (text.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+            var keywordIndex = text.IndexOf(keyword, StringComparison.OrdinalIgnoreCase);
+            if (keywordIndex >= 0)
             {
-                return defaultValue;
+                // Find the value after the keyword
+                var startIndex = keywordIndex + keyword.Length;
+                if (startIndex < text.Length)
+                {
+                    var remainingText = text.Substring(startIndex).Trim();
+                    // Extract until next line or common delimiters
+                    var endIndex = remainingText.IndexOfAny(new[] { '\n', '\r', ',', ';', '|' });
+                    if (endIndex > 0)
+                    {
+                        var extractedValue = remainingText.Substring(0, endIndex).Trim();
+                        return string.IsNullOrWhiteSpace(extractedValue) ? null : extractedValue;
+                    }
+                    else if (remainingText.Length > 0)
+                    {
+                        // Take the remaining text if no delimiter found
+                        var extractedValue = remainingText.Trim();
+                        return string.IsNullOrWhiteSpace(extractedValue) ? null : extractedValue;
+                    }
+                }
             }
         }
         return null;
+    }
+
+    private DateTime? ParseDateFromText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+
+        var dateKeywords = new[] { "Date of Birth:", "DOB:", "Born:", "Birth Date:" };
+        foreach (var keyword in dateKeywords)
+        {
+            var dateValue = ExtractFieldFromText(text, keyword);
+            if (dateValue != null && DateTime.TryParse(dateValue, out var parsedDate))
+            {
+                return parsedDate;
+            }
+        }
+        return null;
+    }
+
+    private AddressInputModel? ExtractAddressFromText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+
+        var address = new AddressInputModel
+        {
+            Line1 = ExtractFieldFromText(text, "Address:", "Street:", "Line1:"),
+            City = ExtractFieldFromText(text, "City:"),
+            State = ExtractFieldFromText(text, "State:", "Province:"),
+            PostalCode = ExtractFieldFromText(text, "Postal:", "ZIP:", "Postal Code:"),
+            Country = ExtractFieldFromText(text, "Country:")
+        };
+
+        // Return null if no address fields were found
+        if (string.IsNullOrWhiteSpace(address.Line1) && 
+            string.IsNullOrWhiteSpace(address.City) && 
+            string.IsNullOrWhiteSpace(address.State) && 
+            string.IsNullOrWhiteSpace(address.PostalCode) && 
+            string.IsNullOrWhiteSpace(address.Country))
+        {
+            return null;
+        }
+
+        return address;
     }
 
     private Dictionary<string, decimal> GenerateFieldConfidences(object extractedData, FhirResourceType resourceType)
@@ -178,7 +243,11 @@ Text to extract from:
     {
         var warnings = new List<string>();
         
-        if (ocrText.Length < 50)
+        if (string.IsNullOrWhiteSpace(ocrText) || ocrText.StartsWith("OCR_NOT_IMPLEMENTED"))
+        {
+            warnings.Add("OCR is not implemented - no real text extraction performed");
+        }
+        else if (ocrText.Length < 20)
         {
             warnings.Add("OCR text is very short, extraction may be incomplete");
         }
@@ -189,9 +258,15 @@ Text to extract from:
             .Where(p => p.Value.ValueKind == JsonValueKind.Null)
             .Count();
 
-        if (nullFields > 3)
+        var totalFields = doc.RootElement.EnumerateObject().Count();
+        
+        if (nullFields == totalFields)
         {
-            warnings.Add($"Many fields could not be extracted ({nullFields} null values)");
+            warnings.Add("No fields could be extracted from the OCR text");
+        }
+        else if (nullFields > totalFields / 2)
+        {
+            warnings.Add($"Many fields could not be extracted ({nullFields} out of {totalFields} fields are null)");
         }
 
         return warnings;

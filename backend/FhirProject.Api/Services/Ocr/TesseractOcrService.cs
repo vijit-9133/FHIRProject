@@ -36,14 +36,16 @@ public class TesseractOcrService : IOcrService
     private async Task<string> ExtractTextFromImageAsync(string imagePath)
     {
         await Task.Delay(300);
-        _logger.LogInformation("OCR extraction completed for image");
-        return "Tesseract OCR not available - using placeholder text";
+        var fileName = Path.GetFileName(imagePath);
+        _logger.LogInformation("OCR extraction completed for image: {FileName}", fileName);
+        return $"OCR_NOT_IMPLEMENTED_FOR_{fileName}";
     }
 
     private async Task<string> ExtractTextFromPdfAsync(string pdfPath)
     {
         await Task.Delay(400);
-        _logger.LogWarning("PDF OCR not yet implemented for file: {FilePath}", Path.GetFileName(pdfPath));
-        return "PDF OCR extraction not yet implemented";
+        var fileName = Path.GetFileName(pdfPath);
+        _logger.LogWarning("PDF OCR not yet implemented for file: {FileName}", fileName);
+        return $"OCR_NOT_IMPLEMENTED_FOR_{fileName}";
     }
 }

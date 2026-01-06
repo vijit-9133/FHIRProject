@@ -381,6 +381,8 @@ export class AssistedReviewFormComponent implements OnChanges {
         },
         error: (error) => {
           console.error('Conversion error:', error);
+          console.error('Error details:', error.error);
+          console.error('Request that failed:', JSON.stringify(request, null, 2));
           this.isConverting = false;
           this.conversionError = error.error?.message || error.message || 'Conversion failed';
         }
@@ -390,14 +392,25 @@ export class AssistedReviewFormComponent implements OnChanges {
   private buildRequestData(formData: any): PatientData | PractitionerData | OrganizationData {
     switch (this.resourceType) {
       case FhirResourceType.Patient:
+        let address = undefined;
+        if (formData.address) {
+          const addressData: any = {};
+          if (formData.address.line1) addressData.line1 = formData.address.line1;
+          if (formData.address.city) addressData.city = formData.address.city;
+          if (formData.address.state) addressData.state = formData.address.state;
+          if (formData.address.postalCode) addressData.postalCode = formData.address.postalCode;
+          if (formData.address.country) addressData.country = formData.address.country;
+          if (Object.keys(addressData).length > 0) address = addressData;
+        }
+        
         return {
           firstName: formData.firstName,
           lastName: formData.lastName,
           dateOfBirth: formData.dateOfBirth + 'T00:00:00Z',
           gender: formData.gender,
-          phoneNumber: formData.phoneNumber || '',
-          email: formData.email || '',
-          address: formData.address
+          phoneNumber: formData.phoneNumber || undefined,
+          email: formData.email || undefined,
+          address: address
         } as PatientData;
       
       case FhirResourceType.Practitioner:

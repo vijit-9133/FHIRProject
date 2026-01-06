@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FhirResourceType, DocumentIngestionResponse } from '../../../core/api/api.models';
@@ -72,6 +72,11 @@ import { AssistedReviewFormComponent } from './assisted-review-form.component';
             [extractionWarnings]="geminiResponse.geminiExtraction?.extractionWarnings || []">
           </app-assisted-review-form>
         </div>
+        
+        <!-- Debug info -->
+        <div *ngIf="geminiResponse" class="mt-2 small text-muted">
+          Debug: isLoading={{isLoading}}, hasResponse={{!!geminiResponse}}
+        </div>
       </div>
     </div>
   `,
@@ -95,7 +100,7 @@ export class DocumentUploadComponent {
   
   readonly FhirResourceType = FhirResourceType;
 
-  constructor(private fhirApiService: FhirApiService) {}
+  constructor(private fhirApiService: FhirApiService, private cdr: ChangeDetectorRef) {}
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -113,13 +118,18 @@ export class DocumentUploadComponent {
       .subscribe({
         next: (response) => {
           console.log('Ingestion API response:', response);
+          console.log('Setting geminiResponse and isLoading=false');
           this.geminiResponse = response;
           this.isLoading = false;
+          this.cdr.detectChanges();
+          console.log('isLoading is now:', this.isLoading);
+          console.log('geminiResponse is now:', this.geminiResponse);
         },
         error: (error) => {
           console.error('Ingestion failed:', error);
-          this.errorMessage = error?.error ?? 'Document ingestion failed';
+          this.errorMessage = error?.error?.message || error?.message || 'Document ingestion failed';
           this.isLoading = false;
+          this.cdr.detectChanges();
         }
       });
   }

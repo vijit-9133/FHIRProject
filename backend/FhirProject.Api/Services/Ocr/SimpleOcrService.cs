@@ -41,41 +41,21 @@ public class SimpleOcrService : IOcrService
     {
         await Task.Delay(300);
         
-        // Simulate extracted text from medical document image
-        return @"PATIENT INFORMATION
-Name: John Doe
-Date of Birth: 05/14/1990
-Gender: Male
-Phone: +1-555-123-4567
-Email: john.doe@example.com
-
-ADDRESS:
-123 Main Street
-San Francisco, CA 94105
-USA
-
-MEDICAL RECORD NUMBER: MR123456789
-VISIT DATE: 12/30/2024";
+        var fileName = Path.GetFileName(imagePath);
+        _logger.LogInformation("OCR extraction for image file: {FileName}", fileName);
+        
+        // Return file-specific placeholder since real OCR is not implemented
+        return $"OCR_NOT_IMPLEMENTED_FOR_{fileName}";
     }
 
     private async Task<string> ExtractTextFromPdfAsync(string pdfPath)
     {
         await Task.Delay(400);
         
-        // Simulate extracted text from medical PDF
-        return @"MEDICAL REPORT
-
-PRACTITIONER INFORMATION
-Dr. Jane Smith, MD
-Specialization: Internal Medicine
-License Number: MD987654321
-Qualification: Doctor of Medicine
-
-PATIENT: John Doe
-DOB: 1990-05-14
-VISIT: 2024-12-30
-
-DIAGNOSIS: Routine checkup
-NOTES: Patient in good health";
+        var fileName = Path.GetFileName(pdfPath);
+        _logger.LogInformation("OCR extraction for PDF file: {FileName}", fileName);
+        
+        // Return file-specific placeholder since real OCR is not implemented
+        return $"OCR_NOT_IMPLEMENTED_FOR_{fileName}";
     }
 }
