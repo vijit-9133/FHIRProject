@@ -29,9 +29,35 @@ namespace FhirProject.Api.Repositories.Implementations
             return await _context.ConversionRequests.FindAsync(id);
         }
 
+        public async Task<ConversionRequestEntity?> GetByIdAsync(int id, int? userId)
+        {
+            if (userId == null)
+            {
+                return null; // No authentication provided
+            }
+
+            // Strict filtering: UserId == currentUserId only
+            return await _context.ConversionRequests
+                .Where(x => x.Id == id && x.UserId == userId)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<IEnumerable<ConversionRequestEntity>> GetAllAsync()
         {
             return await _context.ConversionRequests.ToListAsync();
+        }
+
+        public async Task<IEnumerable<ConversionRequestEntity>> GetAllAsync(int? userId)
+        {
+            if (userId == null)
+            {
+                return Enumerable.Empty<ConversionRequestEntity>(); // No authentication provided
+            }
+
+            // Strict filtering: UserId == currentUserId only
+            return await _context.ConversionRequests
+                .Where(x => x.UserId == userId)
+                .ToListAsync();
         }
 
         public async Task<IEnumerable<ConversionRequestEntity>> GetByResourceTypeAsync(string resourceType)

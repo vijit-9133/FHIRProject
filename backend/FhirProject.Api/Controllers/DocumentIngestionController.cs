@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using FhirProject.Api.DTOs;
 using FhirProject.Api.Models.enums;
 using FhirProject.Api.Services.Ocr;
@@ -8,6 +9,7 @@ namespace FhirProject.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class DocumentIngestionController : ControllerBase
 {
     private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10MB

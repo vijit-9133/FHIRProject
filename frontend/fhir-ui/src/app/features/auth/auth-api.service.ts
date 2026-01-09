@@ -22,6 +22,7 @@ export class AuthApiService {
         tap(response => {
           if (response.success) {
             this.currentRoleSubject.next(response.role);
+            localStorage.setItem('auth_token', response.token);
           }
         })
       );
@@ -37,5 +38,6 @@ export class AuthApiService {
 
   logout(): void {
     this.currentRoleSubject.next(null);
+    localStorage.removeItem('auth_token');
   }
 }

@@ -32,12 +32,26 @@ namespace FhirProject.Api.Services.Implementations
 
         public async Task<ConvertToFhirResponseDto> ConvertToFhirAsync(ConvertToFhirRequestDto request)
         {
+            return await ConvertToFhirAsync(request, userId: null);
+        }
+
+        public async Task<ConvertToFhirResponseDto> ConvertToFhirAsync(ConvertToFhirRequestDto request, int? userId)
+        {
             if (request == null)
             {
                 return new ConvertToFhirResponseDto
                 {
                     Success = false,
                     Message = "Invalid request data"
+                };
+            }
+
+            if (userId == null)
+            {
+                return new ConvertToFhirResponseDto
+                {
+                    Success = false,
+                    Message = "Authentication required for conversion"
                 };
             }
 
@@ -61,7 +75,8 @@ namespace FhirProject.Api.Services.Implementations
                 InputDataJson = inputJson,
                 CreatedAt = DateTime.UtcNow,
                 Status = ConversionStatus.Pending,
-                MappingVersion = "v1"
+                MappingVersion = "v1",
+                UserId = userId // Assign user ID if authenticated, null if anonymous
             };
 
             var savedRequest = await _conversionRequestRepository.CreateAsync(conversionRequest);
@@ -134,22 +149,49 @@ namespace FhirProject.Api.Services.Implementations
 
         public async Task<FhirResourceEntity?> GetFhirResourceByConversionRequestIdAsync(int conversionRequestId)
         {
+            return await GetFhirResourceByConversionRequestIdAsync(conversionRequestId, userId: null);
+        }
+
+        public async Task<FhirResourceEntity?> GetFhirResourceByConversionRequestIdAsync(int conversionRequestId, int? userId)
+        {
+            // First check if the conversion request exists and user has access
+            var conversionRequest = await _conversionRequestRepository.GetByIdAsync(conversionRequestId, userId);
+            if (conversionRequest == null)
+            {
+                return null; // Either doesn't exist or user doesn't have access
+            }
+
             return await _fhirResourceRepository.GetByConversionRequestIdAsync(conversionRequestId);
         }
 
         public async Task<ConversionRequestEntity?> GetConversionRequestByIdAsync(int id)
         {
-            return await _conversionRequestRepository.GetByIdAsync(id);
+            return await GetConversionRequestByIdAsync(id, userId: null);
+        }
+
+        public async Task<ConversionRequestEntity?> GetConversionRequestByIdAsync(int id, int? userId)
+        {
+            return await _conversionRequestRepository.GetByIdAsync(id, userId);
         }
 
         public async Task<IEnumerable<ConversionRequestEntity>> GetConversionHistoryAsync()
         {
-            return await _conversionRequestRepository.GetAllAsync();
+            return await GetConversionHistoryAsync(userId: null);
+        }
+
+        public async Task<IEnumerable<ConversionRequestEntity>> GetConversionHistoryAsync(int? userId)
+        {
+            return await _conversionRequestRepository.GetAllAsync(userId);
         }
 
         public async Task<ConvertToFhirResponseDto> RerunExistingConversionAsync(int conversionRequestId)
         {
-            var existingRequest = await _conversionRequestRepository.GetByIdAsync(conversionRequestId);
+            return await RerunExistingConversionAsync(conversionRequestId, userId: null);
+        }
+
+        public async Task<ConvertToFhirResponseDto> RerunExistingConversionAsync(int conversionRequestId, int? userId)
+        {
+            var existingRequest = await _conversionRequestRepository.GetByIdAsync(conversionRequestId, userId);
             if (existingRequest == null)
             {
                 return new ConvertToFhirResponseDto

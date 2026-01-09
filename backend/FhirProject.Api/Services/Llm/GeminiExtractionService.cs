@@ -141,37 +141,72 @@ Text to extract from:
 
     private string? ExtractFieldFromText(string text, params string[] keywords)
     {
-        // Extract actual field value from OCR text based on keywords
         if (string.IsNullOrWhiteSpace(text))
             return null;
 
         foreach (var keyword in keywords)
         {
-            var keywordIndex = text.IndexOf(keyword, StringComparison.OrdinalIgnoreCase);
-            if (keywordIndex >= 0)
-            {
-                // Find the value after the keyword
-                var startIndex = keywordIndex + keyword.Length;
-                if (startIndex < text.Length)
-                {
-                    var remainingText = text.Substring(startIndex).Trim();
-                    // Extract until next line or common delimiters
-                    var endIndex = remainingText.IndexOfAny(new[] { '\n', '\r', ',', ';', '|' });
-                    if (endIndex > 0)
-                    {
-                        var extractedValue = remainingText.Substring(0, endIndex).Trim();
-                        return string.IsNullOrWhiteSpace(extractedValue) ? null : extractedValue;
-                    }
-                    else if (remainingText.Length > 0)
-                    {
-                        // Take the remaining text if no delimiter found
-                        var extractedValue = remainingText.Trim();
-                        return string.IsNullOrWhiteSpace(extractedValue) ? null : extractedValue;
-                    }
-                }
-            }
+            var extracted = ExtractFieldBetween(text, keyword, GetKnownLabels());
+            if (!string.IsNullOrWhiteSpace(extracted))
+                return extracted;
         }
         return null;
+    }
+
+    private string? ExtractFieldBetween(string text, string startLabel, string[] stopLabels)
+    {
+        var startIndex = text.IndexOf(startLabel, StringComparison.OrdinalIgnoreCase);
+        if (startIndex < 0) return null;
+
+        var valueStartIndex = startIndex + startLabel.Length;
+        if (valueStartIndex >= text.Length) return null;
+
+        var remainingText = text.Substring(valueStartIndex);
+        
+        // Find the earliest stop label
+        var stopIndex = remainingText.Length;
+        foreach (var stopLabel in stopLabels)
+        {
+            var labelIndex = remainingText.IndexOf(stopLabel, StringComparison.OrdinalIgnoreCase);
+            if (labelIndex >= 0 && labelIndex < stopIndex)
+            {
+                stopIndex = labelIndex;
+            }
+        }
+
+        var extractedValue = remainingText.Substring(0, stopIndex).Trim();
+        
+        // Clean up common delimiters at the start
+        extractedValue = extractedValue.TrimStart(':', '-', '=', ' ', '\t');
+        
+        // For non-address fields, stop at line breaks
+        if (!startLabel.Contains("Address", StringComparison.OrdinalIgnoreCase))
+        {
+            var lineBreakIndex = extractedValue.IndexOfAny(new[] { '\n', '\r' });
+            if (lineBreakIndex >= 0)
+            {
+                extractedValue = extractedValue.Substring(0, lineBreakIndex);
+            }
+        }
+
+        extractedValue = extractedValue.Trim();
+        return string.IsNullOrWhiteSpace(extractedValue) ? null : extractedValue;
+    }
+
+    private string[] GetKnownLabels()
+    {
+        return new[]
+        {
+            "First Name", "Last Name", "Date of Birth", "DOB", "Gender", 
+            "Phone", "Phone Number", "Email", "Address", "Name:", "Patient:",
+            "Dr.", "Doctor", "Practitioner:", "Qualification:", "Degree:",
+            "Specialization:", "Specialty:", "Department:", "License:", 
+            "License Number:", "Registration:", "Hospital", "Clinic", 
+            "Organization:", "Company:", "Type:", "Category:", "Reg:", "ID:",
+            "Street:", "Line1:", "City:", "State:", "Province:", "Postal:", 
+            "ZIP:", "Postal Code:", "Country:", "Tel:", "Telephone:", "E-mail:",
+            "Sex:", "Born:", "Birth Date:", "MD"
+        };
     }
 
     private DateTime? ParseDateFromText(string text)
@@ -182,7 +217,7 @@ Text to extract from:
         var dateKeywords = new[] { "Date of Birth:", "DOB:", "Born:", "Birth Date:" };
         foreach (var keyword in dateKeywords)
         {
-            var dateValue = ExtractFieldFromText(text, keyword);
+            var dateValue = ExtractFieldBetween(text, keyword, GetKnownLabels());
             if (dateValue != null && DateTime.TryParse(dateValue, out var parsedDate))
             {
                 return parsedDate;
@@ -196,14 +231,51 @@ Text to extract from:
         if (string.IsNullOrWhiteSpace(text))
             return null;
 
-        var address = new AddressInputModel
+        // Extract address as a block first
+        var addressBlock = ExtractFieldBetween(text, "Address:", GetKnownLabels());
+        if (string.IsNullOrWhiteSpace(addressBlock))
         {
-            Line1 = ExtractFieldFromText(text, "Address:", "Street:", "Line1:"),
-            City = ExtractFieldFromText(text, "City:"),
-            State = ExtractFieldFromText(text, "State:", "Province:"),
-            PostalCode = ExtractFieldFromText(text, "Postal:", "ZIP:", "Postal Code:"),
-            Country = ExtractFieldFromText(text, "Country:")
-        };
+            addressBlock = ExtractFieldBetween(text, "Street:", GetKnownLabels());
+        }
+
+        var address = new AddressInputModel();
+
+        if (!string.IsNullOrWhiteSpace(addressBlock))
+        {
+            // Parse address block into components
+            var lines = addressBlock.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                                   .Select(l => l.Trim())
+                                   .Where(l => !string.IsNullOrWhiteSpace(l))
+                                   .ToArray();
+            
+            if (lines.Length > 0)
+                address.Line1 = lines[0];
+            if (lines.Length > 1)
+            {
+                // Try to parse city, state, postal from last line
+                var lastLine = lines[lines.Length - 1];
+                var parts = lastLine.Split(',').Select(p => p.Trim()).ToArray();
+                if (parts.Length >= 2)
+                {
+                    address.City = parts[0];
+                    var stateZip = parts[1].Split(' ').Where(p => !string.IsNullOrWhiteSpace(p)).ToArray();
+                    if (stateZip.Length >= 1) address.State = stateZip[0];
+                    if (stateZip.Length >= 2) address.PostalCode = stateZip[1];
+                }
+            }
+        }
+        else
+        {
+            // Try individual field extraction
+            address.Line1 = ExtractFieldBetween(text, "Line1:", GetKnownLabels());
+            address.City = ExtractFieldBetween(text, "City:", GetKnownLabels());
+            address.State = ExtractFieldBetween(text, "State:", GetKnownLabels()) ?? 
+                           ExtractFieldBetween(text, "Province:", GetKnownLabels());
+            address.PostalCode = ExtractFieldBetween(text, "Postal:", GetKnownLabels()) ?? 
+                                ExtractFieldBetween(text, "ZIP:", GetKnownLabels()) ?? 
+                                ExtractFieldBetween(text, "Postal Code:", GetKnownLabels());
+            address.Country = ExtractFieldBetween(text, "Country:", GetKnownLabels());
+        }
 
         // Return null if no address fields were found
         if (string.IsNullOrWhiteSpace(address.Line1) && 

@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 using FhirProject.Api.Data;
 using FhirProject.Api.Repositories.Interfaces;
 using FhirProject.Api.Repositories.Implementations;
@@ -7,6 +10,7 @@ using FhirProject.Api.Services.Interfaces;
 using FhirProject.Api.Services.Implementations;
 using FhirProject.Api.Services.Ocr;
 using FhirProject.Api.Services.Llm;
+using FhirProject.Api.Services.Auth;
 using FhirProject.Api.Mapping;
 using FhirProject.Api.Validation;
 using FhirProject.Api.Middleware;
@@ -40,10 +44,41 @@ builder.Services.AddScoped<IFhirValidator, FhirOrganizationValidator>();
 builder.Services.AddScoped<IFhirConversionService, FhirConversionService>();
 
 // Register OCR Service
-builder.Services.AddScoped<IOcrService, SimpleOcrService>();
+builder.Services.AddScoped<IOcrService, TesseractOcrService>();
 
 // Register Gemini LLM Service
 builder.Services.AddScoped<IGeminiExtractionService, GeminiExtractionService>();
+
+// Register JWT Token Service
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+// Add JWT Authentication (Passive Mode)
+var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+var secretKey = Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(secretKey),
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidateAudience = true,
+        ValidAudience = jwtSettings["Audience"],
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+});
+
+builder.Services.AddAuthorization();
 
 // Enable Controllers
 builder.Services.AddControllers()
@@ -86,6 +121,10 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 
 // Use CORS
 app.UseCors("AllowAll");
+
+// Add Authentication and Authorization middleware (Passive Mode)
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {

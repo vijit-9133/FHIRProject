@@ -24,5 +24,8 @@ namespace FhirProject.Api.Models.entities
     public decimal? ExtractionConfidence { get; set; }
 
     public string? ExtractionWarnings { get; set; }
+
+    // Nullable ownership field for future user-specific data access
+    public int? UserId { get; set; }
 }
 }

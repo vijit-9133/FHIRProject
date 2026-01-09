@@ -7,6 +7,7 @@ export interface LoginResponse {
   success: boolean;
   userId: number;
   role: string;
+  token: string;
 }
 
 export enum UserRole {
