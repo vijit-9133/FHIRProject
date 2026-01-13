@@ -1,0 +1,99 @@
+### External Integration API Sample Requests
+
+# Client Credentials Configuration
+# Add these to appsettings.json:
+# "ClientCredentials": {
+#   "ValidClients": {
+#     "external-system-1": "secret-key-1",
+#     "external-system-2": "secret-key-2"
+#   }
+# }
+
+### Process External Healthcare Event
+POST {{host}}/api/integration/events
+Content-Type: application/json
+X-Client-Id: external-system-1
+X-Client-Secret: secret-key-1
+
+{
+  "sourceSystem": "HospitalEMR",
+  "sourceSystemVersion": "v2.1.0",
+  "externalReferenceId": "EMR-2024-001234",
+  "eventTimestamp": "2024-01-09T10:30:00Z",
+  "patient": {
+    "externalPatientId": "MRN-123456789",
+    "firstName": "John",
+    "lastName": "Doe",
+    "dateOfBirth": "1985-03-15T00:00:00Z",
+    "gender": "male",
+    "phoneNumber": "555-123-4567",
+    "email": "john.doe@example.com",
+    "address": {
+      "line1": "123 Main Street",
+      "city": "San Francisco",
+      "state": "CA",
+      "postalCode": "94105",
+      "country": "USA"
+    }
+  },
+  "practitioner": {
+    "externalPractitionerId": "PROV-987654321",
+    "firstName": "Dr. Jane",
+    "lastName": "Smith",
+    "qualification": "MD",
+    "specialty": "cardiology",
+    "phoneNumber": "555-987-6543",
+    "email": "jane.smith@hospital.com",
+    "address": {
+      "line1": "456 Medical Center Dr",
+      "city": "San Francisco",
+      "state": "CA",
+      "postalCode": "94105",
+      "country": "USA"
+    }
+  },
+  "encounter": {
+    "externalEncounterId": "ENC-2024-567890",
+    "encounterType": "outpatient",
+    "status": "finished",
+    "startDateTime": "2024-01-09T10:00:00Z",
+    "endDateTime": "2024-01-09T11:00:00Z",
+    "reasonCode": "Z00.00",
+    "reasonDisplay": "Routine health examination",
+    "location": "Cardiology Clinic"
+  }
+}
+
+### Expected Response
+# {
+#   "conversionRequestId": 123,
+#   "internalPatientFhirId": "patient-guid-123",
+#   "internalPractitionerFhirId": "practitioner-guid-456",
+#   "internalEncounterFhirId": "encounter-guid-789",
+#   "status": "Stored",
+#   "message": "Successfully processed external healthcare event"
+# }
+
+### Invalid Client Credentials (401)
+POST {{host}}/api/integration/events
+Content-Type: application/json
+X-Client-Id: invalid-client
+X-Client-Secret: wrong-secret
+
+{
+  "sourceSystem": "TestSystem",
+  "sourceSystemVersion": "v1.0",
+  "externalReferenceId": "TEST-001",
+  "eventTimestamp": "2024-01-09T10:30:00Z"
+}
+
+### Missing Client Credentials (401)
+POST {{host}}/api/integration/events
+Content-Type: application/json
+
+{
+  "sourceSystem": "TestSystem",
+  "sourceSystemVersion": "v1.0",
+  "externalReferenceId": "TEST-002",
+  "eventTimestamp": "2024-01-09T10:30:00Z"
+}

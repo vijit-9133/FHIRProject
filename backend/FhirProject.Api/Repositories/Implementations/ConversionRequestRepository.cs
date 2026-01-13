@@ -70,6 +70,20 @@ namespace FhirProject.Api.Repositories.Implementations
                 .ToListAsync();
         }
 
+        public async Task<ConversionRequestEntity?> GetByExternalReferenceAsync(string sourceSystem, string externalReferenceId, string eventType)
+        {
+            if (string.IsNullOrWhiteSpace(sourceSystem) || string.IsNullOrWhiteSpace(externalReferenceId) || string.IsNullOrWhiteSpace(eventType))
+                return null;
+
+            // Query by InputDataJson containing the external reference - this is a workaround since we can't modify schema
+            return await _context.ConversionRequests
+                .Where(x => x.ResourceType == eventType && 
+                           x.InputDataJson.Contains($"\"sourceSystem\":\"{sourceSystem}\"") &&
+                           x.InputDataJson.Contains($"\"externalReferenceId\":\"{externalReferenceId}\""))
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync();
+        }
+
         public async Task<ConversionRequestEntity> UpdateAsync(ConversionRequestEntity entity)
         {
             if (entity == null)

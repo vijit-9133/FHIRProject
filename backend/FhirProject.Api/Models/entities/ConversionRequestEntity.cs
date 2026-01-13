@@ -27,5 +27,14 @@ namespace FhirProject.Api.Models.entities
 
     // Nullable ownership field for future user-specific data access
     public int? UserId { get; set; }
+
+    // Lifecycle tracking fields
+    public DateTime? NormalizedAt { get; set; }
+    public DateTime? TerminologyMappedAt { get; set; }
+    public DateTime? FhirCreatedAt { get; set; }
+    public DateTime? FhirValidatedAt { get; set; }
+    public DateTime? StoredAt { get; set; }
+    public string? FailureReason { get; set; }
+    public string? FailureStage { get; set; }
 }
 }

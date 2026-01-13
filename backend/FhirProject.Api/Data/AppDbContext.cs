@@ -14,6 +14,7 @@ namespace FhirProject.Api.Data
     public DbSet<ConversionRequestEntity> ConversionRequests { get; set; }
     public DbSet<FhirResourceEntity> FhirResources { get; set; }
     public DbSet<UserEntity> Users { get; set; }
+    public DbSet<ExternalResourceMapping> ExternalResourceMappings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +45,18 @@ namespace FhirProject.Api.Data
         modelBuilder.Entity<UserEntity>()
             .Property(x => x.Role)
             .HasConversion<int>();
+
+        // ExternalResourceMapping configuration
+        modelBuilder.Entity<ExternalResourceMapping>()
+            .HasKey(x => x.Id);
+
+        modelBuilder.Entity<ExternalResourceMapping>()
+            .Property(x => x.ResourceType)
+            .HasConversion<int>();
+
+        modelBuilder.Entity<ExternalResourceMapping>()
+            .HasIndex(x => new { x.SourceSystem, x.ExternalId })
+            .IsUnique();
 
         // Seed users
         modelBuilder.Entity<UserEntity>().HasData(

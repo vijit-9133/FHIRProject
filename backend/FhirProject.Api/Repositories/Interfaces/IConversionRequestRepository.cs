@@ -10,6 +10,7 @@ namespace FhirProject.Api.Repositories.Interfaces
         Task<IEnumerable<ConversionRequestEntity>> GetAllAsync();
         Task<IEnumerable<ConversionRequestEntity>> GetAllAsync(int? userId);
         Task<IEnumerable<ConversionRequestEntity>> GetByResourceTypeAsync(string resourceType);
+        Task<ConversionRequestEntity?> GetByExternalReferenceAsync(string sourceSystem, string externalReferenceId, string eventType);
         Task<ConversionRequestEntity> UpdateAsync(ConversionRequestEntity entity);
     }
 }

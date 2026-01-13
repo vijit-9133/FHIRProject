@@ -1,0 +1,95 @@
+### FHIR Read and Search API Sample Requests
+
+# Client Permissions Configuration:
+# "ClientPermissions": {
+#   "external-system-1": ["read:Patient", "read:Encounter", "search:Patient", "search:Encounter"],
+#   "external-system-2": ["read:Patient", "search:Patient"]
+# }
+
+### Get Patient by ID
+GET {{host}}/api/fhir/Patient/patient-123456
+X-Client-Id: external-system-1
+X-Client-Secret: secret-key-1
+Accept: application/fhir+json
+
+### Search Patients by Identifier
+GET {{host}}/api/fhir/Patient?identifier=MRN-123456789
+X-Client-Id: external-system-1
+X-Client-Secret: secret-key-1
+Accept: application/fhir+json
+
+### Search Encounters by Patient
+GET {{host}}/api/fhir/Encounter?patient=patient-123456
+X-Client-Id: external-system-1
+X-Client-Secret: secret-key-1
+Accept: application/fhir+json
+
+### Unauthorized - Invalid Credentials (401)
+GET {{host}}/api/fhir/Patient/patient-123456
+X-Client-Id: invalid-client
+X-Client-Secret: wrong-secret
+Accept: application/fhir+json
+
+### Forbidden - Insufficient Permissions (403)
+# external-system-2 doesn't have read:Encounter permission
+GET {{host}}/api/fhir/Encounter?patient=patient-123456
+X-Client-Id: external-system-2
+X-Client-Secret: secret-key-2
+Accept: application/fhir+json
+
+### Missing Client Credentials (401)
+GET {{host}}/api/fhir/Patient/patient-123456
+Accept: application/fhir+json
+
+### Bad Request - Missing Required Parameter (400)
+GET {{host}}/api/fhir/Patient
+X-Client-Id: external-system-1
+X-Client-Secret: secret-key-1
+Accept: application/fhir+json
+
+### Not Found - Patient Doesn't Exist (404)
+GET {{host}}/api/fhir/Patient/nonexistent-patient
+X-Client-Id: external-system-1
+X-Client-Secret: secret-key-1
+Accept: application/fhir+json
+
+### Expected Response Formats
+
+# Patient Resource Response:
+# {
+#   "resourceType": "Patient",
+#   "id": "patient-123456",
+#   "name": [
+#     {
+#       "use": "official",
+#       "family": "Doe",
+#       "given": ["John"]
+#     }
+#   ],
+#   "gender": "male",
+#   "birthDate": "1985-03-15",
+#   "telecom": [...],
+#   "address": [...]
+# }
+
+# Search Bundle Response:
+# {
+#   "resourceType": "Bundle",
+#   "type": "searchset",
+#   "total": 1,
+#   "entry": [
+#     {
+#       "resource": {
+#         "resourceType": "Patient",
+#         "id": "patient-guid",
+#         "identifier": [
+#           {
+#             "system": "http://hospital.example.org/mrn",
+#             "value": "MRN-123456789"
+#           }
+#         ],
+#         ...
+#       }
+#     }
+#   ]
+# }

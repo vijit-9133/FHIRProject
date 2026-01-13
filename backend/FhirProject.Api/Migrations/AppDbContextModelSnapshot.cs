@@ -43,6 +43,18 @@ namespace FhirProject.Api.Migrations
                     b.Property<string>("ExtractionWarnings")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("FailureReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("FailureStage")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("FhirCreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FhirValidatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("InputDataJson")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -56,6 +68,9 @@ namespace FhirProject.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("NormalizedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ResourceType")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -63,12 +78,50 @@ namespace FhirProject.Api.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("StoredAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("TerminologyMappedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.ToTable("ConversionRequests");
+                });
+
+            modelBuilder.Entity("FhirProject.Api.Models.entities.ExternalResourceMapping", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ExternalId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("InternalResourceId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ResourceType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceSystem")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceSystem", "ExternalId")
+                        .IsUnique();
+
+                    b.ToTable("ExternalResourceMappings");
                 });
 
             modelBuilder.Entity("FhirProject.Api.Models.entities.FhirResourceEntity", b =>
