@@ -4,6 +4,7 @@ namespace FhirProject.Api.Models.enums
     {
         Patient = 1,
         Practitioner = 2,
-        Organization = 3
+        Organization = 3,
+        Admin = 4
     }
 }

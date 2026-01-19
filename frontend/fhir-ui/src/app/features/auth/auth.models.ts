@@ -13,5 +13,6 @@ export interface LoginResponse {
 export enum UserRole {
   Patient = 1,
   Practitioner = 2,
-  Organization = 3
+  Organization = 3,
+  Admin = 4
 }

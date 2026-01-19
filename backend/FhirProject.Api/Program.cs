@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.Text.Json;
@@ -17,16 +18,20 @@ using FhirProject.Api.Services.Auth;
 using FhirProject.Api.Mapping;
 using FhirProject.Api.Validation;
 using FhirProject.Api.Middleware;
+using FhirProject.Api.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // --------------------
 // Render / Docker hosting config
 // --------------------
-builder.WebHost.ConfigureKestrel(options =>
+if (!builder.Environment.IsDevelopment())
 {
-    options.ListenAnyIP(8080);
-});
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.ListenAnyIP(8080);
+    });
+}
 
 // --------------------
 // Database
@@ -44,6 +49,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IConversionRequestRepository, ConversionRequestRepository>();
 builder.Services.AddScoped<IFhirResourceRepository, FhirResourceRepository>();
 builder.Services.AddScoped<IExternalResourceMappingRepository, ExternalResourceMappingRepository>();
+builder.Services.AddScoped<IExternalSystemRepository, ExternalSystemRepository>();
 
 // --------------------
 // FHIR Mappers
@@ -69,6 +75,7 @@ builder.Services.AddScoped<IInboundNormalizationService, InboundNormalizationSer
 builder.Services.AddScoped<ITerminologyMappingService, TerminologyMappingService>();
 builder.Services.AddScoped<IClientCredentialsService, ClientCredentialsService>();
 builder.Services.AddScoped<IFhirResourceService, FhirResourceService>();
+builder.Services.AddScoped<IExternalSystemService, ExternalSystemService>();
 
 // --------------------
 // FHIR Client + Upsert Services
@@ -89,6 +96,12 @@ builder.Services.AddScoped<IHealthcareEventIdempotencyService, HealthcareEventId
 // --------------------
 builder.Services.AddScoped<IOcrService, TesseractOcrService>();
 builder.Services.AddScoped<IGeminiExtractionService, GeminiExtractionService>();
+
+// --------------------
+// Authentication Services
+// --------------------
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IExternalSystemTokenService, ExternalSystemTokenService>();
 
 // --------------------
 // JWT Authentication
@@ -118,7 +131,21 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("RequireExternalSystem", policy =>
+    {
+        policy.RequireClaim("ClientType", "External");
+        policy.AddRequirements(new ActiveExternalSystemRequirement());
+    });
+
+    options.AddPolicy("RequireAdmin", policy =>
+    {
+        policy.RequireRole("Admin");
+    });
+});
+
+builder.Services.AddScoped<IAuthorizationHandler, ActiveExternalSystemHandler>();
 
 // --------------------
 // Controllers + JSON

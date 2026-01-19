@@ -15,6 +15,7 @@ namespace FhirProject.Api.Data
     public DbSet<FhirResourceEntity> FhirResources { get; set; }
     public DbSet<UserEntity> Users { get; set; }
     public DbSet<ExternalResourceMapping> ExternalResourceMappings { get; set; }
+    public DbSet<ExternalSystem> ExternalSystems { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,6 +58,24 @@ namespace FhirProject.Api.Data
         modelBuilder.Entity<ExternalResourceMapping>()
             .HasIndex(x => new { x.SourceSystem, x.ExternalId })
             .IsUnique();
+
+        // ExternalSystem configuration
+        modelBuilder.Entity<ExternalSystem>()
+            .HasKey(x => x.Id);
+
+        modelBuilder.Entity<ExternalSystem>()
+            .Property(x => x.Status)
+            .HasConversion<int>();
+
+        modelBuilder.Entity<ExternalSystem>()
+            .HasIndex(x => x.ClientId)
+            .IsUnique();
+
+        modelBuilder.Entity<ExternalSystem>()
+            .HasOne(x => x.ApprovedByUser)
+            .WithMany()
+            .HasForeignKey(x => x.ApprovedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // Seed users
         modelBuilder.Entity<UserEntity>().HasData(

@@ -1,4 +1,5 @@
 using FhirProject.Api.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -6,6 +7,7 @@ namespace FhirProject.Api.Controllers;
 
 [ApiController]
 [Route("api/fhir")]
+[Authorize(Policy = "RequireExternalSystem")]
 public class FhirReadController : ControllerBase
 {
     private readonly IClientCredentialsService _clientCredentialsService;
@@ -19,20 +21,9 @@ public class FhirReadController : ControllerBase
         _fhirResourceService = fhirResourceService;
     }
 
-    [HttpGet("Patient/{id}")]
-    public async Task<IActionResult> GetPatient(
-        string id,
-        [FromHeader(Name = "X-Client-Id")] string clientId,
-        [FromHeader(Name = "X-Client-Secret")] string clientSecret)
+    [HttpGet("Patients/{id}")]
+    public async Task<IActionResult> GetPatient(string id)
     {
-        // Validate client credentials
-        if (!ValidateClient(clientId, clientSecret))
-            return Unauthorized("Invalid client credentials");
-
-        // Check read permission
-        if (!_clientCredentialsService.HasPermission(clientId, "read:Patient"))
-            return Forbid("Insufficient permissions to read Patient resources");
-
         var patientJson = await _fhirResourceService.GetPatientByIdAsync(id);
         if (patientJson == null)
             return NotFound();
@@ -40,20 +31,9 @@ public class FhirReadController : ControllerBase
         return Content(patientJson, "application/fhir+json");
     }
 
-    [HttpGet("Patient")]
-    public async Task<IActionResult> SearchPatients(
-        [FromQuery] string? identifier,
-        [FromHeader(Name = "X-Client-Id")] string clientId,
-        [FromHeader(Name = "X-Client-Secret")] string clientSecret)
+    [HttpGet("Patients")]
+    public async Task<IActionResult> SearchPatients([FromQuery] string? identifier)
     {
-        // Validate client credentials
-        if (!ValidateClient(clientId, clientSecret))
-            return Unauthorized("Invalid client credentials");
-
-        // Check search permission
-        if (!_clientCredentialsService.HasPermission(clientId, "search:Patient"))
-            return Forbid("Insufficient permissions to search Patient resources");
-
         if (string.IsNullOrEmpty(identifier))
             return BadRequest("identifier parameter is required");
 
@@ -73,20 +53,9 @@ public class FhirReadController : ControllerBase
         return Content(results.First(), "application/fhir+json");
     }
 
-    [HttpGet("Encounter")]
-    public async Task<IActionResult> SearchEncounters(
-        [FromQuery] string? patient,
-        [FromHeader(Name = "X-Client-Id")] string clientId,
-        [FromHeader(Name = "X-Client-Secret")] string clientSecret)
+    [HttpGet("Encounters")]
+    public async Task<IActionResult> SearchEncounters([FromQuery] string? patient)
     {
-        // Validate client credentials
-        if (!ValidateClient(clientId, clientSecret))
-            return Unauthorized("Invalid client credentials");
-
-        // Check search permission
-        if (!_clientCredentialsService.HasPermission(clientId, "search:Encounter"))
-            return Forbid("Insufficient permissions to search Encounter resources");
-
         if (string.IsNullOrEmpty(patient))
             return BadRequest("patient parameter is required");
 
@@ -104,12 +73,5 @@ public class FhirReadController : ControllerBase
         }
 
         return Content(results.First(), "application/fhir+json");
-    }
-
-    private bool ValidateClient(string clientId, string clientSecret)
-    {
-        return !string.IsNullOrEmpty(clientId) && 
-               !string.IsNullOrEmpty(clientSecret) && 
-               _clientCredentialsService.ValidateCredentials(clientId, clientSecret);
     }
 }

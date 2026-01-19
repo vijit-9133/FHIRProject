@@ -10,5 +10,5 @@ export interface LoginResponse {
 
 export interface User {
   userId: number;
-  role: 'Patient' | 'Practitioner' | 'Organization';
+  role: 'Patient' | 'Practitioner' | 'Organization' | 'Admin';
 }

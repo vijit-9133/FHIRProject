@@ -29,7 +29,7 @@ export class AuthService {
           if (response.success) {
             const user: User = {
               userId: response.userId,
-              role: response.role as 'Patient' | 'Practitioner' | 'Organization'
+              role: response.role as 'Patient' | 'Practitioner' | 'Organization' | 'Admin'
             };
             localStorage.setItem('currentUser', JSON.stringify(user));
             this.currentUserSubject.next(user);

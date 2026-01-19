@@ -1,12 +1,14 @@
 using FhirProject.Api.DTOs;
 using FhirProject.Api.DTOs.Inbound.V1;
 using FhirProject.Api.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FhirProject.Api.Controllers;
 
 [ApiController]
 [Route("api/integration")]
+[Authorize(Policy = "RequireExternalSystem")]
 public class ExternalIntegrationController : ControllerBase
 {
     private readonly IClientCredentialsService _clientCredentialsService;
@@ -25,21 +27,8 @@ public class ExternalIntegrationController : ControllerBase
 
     [HttpPost("events")]
     public async Task<ActionResult<ExternalIntegrationResponseDto>> ProcessExternalEvent(
-        [FromBody] ExternalHealthcareEventV1 externalEvent,
-        [FromHeader(Name = "X-Client-Id")] string clientId,
-        [FromHeader(Name = "X-Client-Secret")] string clientSecret)
+        [FromBody] ExternalHealthcareEventV1 externalEvent)
     {
-        // Validate client credentials
-        if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
-        {
-            return Unauthorized("Client credentials required");
-        }
-
-        if (!_clientCredentialsService.ValidateCredentials(clientId, clientSecret))
-        {
-            return Unauthorized("Invalid client credentials");
-        }
-
         try
         {
             // Normalize the external event
